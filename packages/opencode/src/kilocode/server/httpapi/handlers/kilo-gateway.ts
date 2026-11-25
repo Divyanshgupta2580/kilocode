@@ -36,6 +36,7 @@ import { Storage } from "@/storage/storage"
 import { Instance } from "@/kilocode/instance"
 import { InstanceStore } from "@/project/instance-store"
 import { ModelCache } from "@/provider/model-cache"
+import { invalidateAfterProviderAuthChange } from "@/kilocode/server/provider-auth-lifecycle"
 import { InstanceHttpApi } from "@/server/routes/instance/httpapi/api"
 import { AudioTranscriptionsBody, CloudSessionImportError, FimBody } from "../groups/kilo-gateway"
 
@@ -252,9 +253,11 @@ export const kiloGatewayHandlers = HttpApiBuilder.group(InstanceHttpApi, "kilo",
         })
         .pipe(Effect.mapError(() => new HttpApiError.Unauthorized({})))
 
-      yield* cache.clear("kilo")
       clearModesCache()
-      yield* store.disposeAll().pipe(Effect.mapError(() => new HttpApiError.Unauthorized({})))
+      yield* invalidateAfterProviderAuthChange("kilo").pipe(
+        Effect.provideService(ModelCache.Service, cache),
+        Effect.provideService(InstanceStore.Service, store),
+      )
       return true
     })
 
